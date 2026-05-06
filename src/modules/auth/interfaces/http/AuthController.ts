@@ -12,6 +12,14 @@ import {
 import type { RefreshSession } from "../../application/use-cases/RefreshSession";
 import type { Logout } from "../../application/use-cases/Logout";
 import {
+  SendOtpInput,
+  type SendOtp,
+} from "../../application/use-cases/SendOtp";
+import {
+  VerifyOtpInput,
+  type VerifyOtp,
+} from "../../application/use-cases/VerifyOtp";
+import {
   COOKIE_REFRESH,
   clearAuthCookies,
   setAuthCookies,
@@ -23,6 +31,8 @@ export class AuthController {
     private readonly loginUser: LoginUser,
     private readonly refresh: RefreshSession,
     private readonly logout: Logout,
+    private readonly sendOtpUseCase: SendOtp,
+    private readonly verifyOtpUseCase: VerifyOtp,
   ) {}
 
   register = async (req: Request, res: Response): Promise<void> => {
@@ -79,5 +89,25 @@ export class AuthController {
     }
     clearAuthCookies(res);
     res.status(204).send();
+  };
+
+  sendOtp = async (req: Request, res: Response): Promise<void> => {
+    const input = SendOtpInput.parse({
+      userId: req.auth!.userId,
+      purpose: req.body.purpose,
+    });
+    const result = await this.sendOtpUseCase.execute(input);
+    res.status(200).json(
+      ok({
+        expiresAt: result.expiresAt.toISOString(),
+        resendAllowedAt: result.resendAllowedAt.toISOString(),
+      }),
+    );
+  };
+
+  verifyOtp = async (req: Request, res: Response): Promise<void> => {
+    const input = VerifyOtpInput.parse(req.body);
+    await this.verifyOtpUseCase.execute(input);
+    res.status(200).json(ok({ verified: true }));
   };
 }

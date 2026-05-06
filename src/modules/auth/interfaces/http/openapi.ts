@@ -230,6 +230,104 @@ registry.registerPath({
 });
 
 // ---------------------------------------------------------------------------
+// OTP endpoints
+// ---------------------------------------------------------------------------
+
+const OtpPurposeEnum = z.enum(["email_verification", "login", "password_reset"]);
+
+const SendOtpBody = z
+  .object({
+    purpose: OtpPurposeEnum.openapi({
+      description:
+        "`email_verification` — confirm account email after registration. " +
+        "`login` — passwordless login flow. " +
+        "`password_reset` — step in the forgot-password flow.",
+      example: "email_verification",
+    }),
+  })
+  .openapi("SendOtpBody");
+
+const SendOtpResponse = z
+  .object({
+    success: z.literal(true),
+    data: z.object({
+      expiresAt: z.string().datetime().openapi({
+        example: "2026-05-07T12:10:00.000Z",
+        description: "When the OTP expires (10 minutes from generation).",
+      }),
+      resendAllowedAt: z.string().datetime().openapi({
+        example: "2026-05-07T12:01:00.000Z",
+        description: "Earliest time a new OTP may be requested (60-second cooldown).",
+      }),
+    }),
+  })
+  .openapi("SendOtpResponse");
+
+const VerifyOtpBody = z
+  .object({
+    userId: z.string().uuid().openapi({ example: "01910000-0000-7000-0000-000000000001" }),
+    purpose: OtpPurposeEnum.openapi({ example: "email_verification" }),
+    code: z.string().min(4).max(10).openapi({ example: "482916" }),
+  })
+  .openapi("VerifyOtpBody");
+
+const VerifyOtpResponse = z
+  .object({
+    success: z.literal(true),
+    data: z.object({ verified: z.literal(true) }),
+  })
+  .openapi("VerifyOtpResponse");
+
+registry.registerPath({
+  method: "post",
+  path: "/auth/otp/send",
+  tags: [TAG],
+  summary: "Request an OTP code",
+  description:
+    "Generates a one-time password for the authenticated user and the requested purpose. " +
+    "The code is delivered out-of-band (email or SMS) — it is **never** returned in the response. " +
+    "Requests within the 60-second cooldown window return 412.",
+  security: [{ cookieAuth: [] }, { bearerAuth: [] }],
+  request: {
+    body: { content: { "application/json": { schema: SendOtpBody } }, required: true },
+  },
+  responses: {
+    200: {
+      description: "OTP sent",
+      content: { "application/json": { schema: SendOtpResponse } },
+    },
+    400: { description: "Validation error" },
+    401: { description: "Authentication required" },
+    404: { description: "User not found or inactive" },
+    412: { description: "Resend cooldown active — try again after resendAllowedAt" },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/auth/otp/verify",
+  tags: [TAG],
+  summary: "Verify an OTP code",
+  description:
+    "Validates a one-time password. On success returns `{ verified: true }`. " +
+    "The OTP is immediately marked as used and cannot be replayed. " +
+    "This endpoint is public so it can be used during the password-reset flow " +
+    "before a session exists.",
+  request: {
+    body: { content: { "application/json": { schema: VerifyOtpBody } }, required: true },
+  },
+  responses: {
+    200: {
+      description: "OTP verified",
+      content: { "application/json": { schema: VerifyOtpResponse } },
+    },
+    400: { description: "Validation error" },
+    401: { description: "Invalid or expired OTP" },
+    404: { description: "User not found or inactive" },
+  },
+});
+
+// ---------------------------------------------------------------------------
 // Attach cookie parameter to refresh + logout (raw spec extension)
 // ---------------------------------------------------------------------------
 // zod-to-openapi does not expose a cookie parameter API on registerPath, so we

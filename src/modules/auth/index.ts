@@ -49,8 +49,10 @@ export const buildAuthModule = (): AuthModule => {
     new LoginUser(userRepo, refreshRepo, argon2Hasher, tokenService),
     new RefreshSession(userRepo, refreshRepo, tokenService),
     new Logout(refreshRepo),
+    sendOtp,
+    verifyOtp,
   );
-  return { routes: authRoutes(controller), tokenService, sendOtp, verifyOtp };
+  return { routes: authRoutes(controller, tokenService), tokenService, sendOtp, verifyOtp };
 };
 
 export { authenticate } from "./interfaces/http/middleware/authenticate";
