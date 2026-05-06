@@ -28,6 +28,10 @@ const envSchema = z.object({
   RABBITMQ_URL: z.string().optional(),
 
   PAYMENT_PROVIDER: z.enum(["mock", "stripe"]).default("mock"),
+
+  EMAIL_PROVIDER: z.enum(["resend", "console"]).default("console"),
+  EMAIL_FROM: z.string().email().default("noreply@example.com"),
+  RESEND_API_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

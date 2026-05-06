@@ -1,6 +1,6 @@
 # Codemaps
 
-**Last updated:** 2026-05-06
+**Last updated:** 2026-05-07
 
 Per-bounded-context maps of `tte-ecommerce-api`. Each codemap mirrors a
 directory under `src/modules/<name>/` and documents the public surface,

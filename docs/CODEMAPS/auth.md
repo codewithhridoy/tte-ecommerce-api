@@ -1,6 +1,6 @@
 # Auth module codemap
 
-**Last updated:** 2026-05-06 (OtpVerifier interface added)
+**Last updated:** 2026-05-07 (OtpNotifier + ResendOtpNotifier + HTTP OTP routes)
 **Bounded context:** `auth`
 **Source:** `src/modules/auth/`
 **Composition root:** `buildAuthModule()` in `src/modules/auth/index.ts`
@@ -26,7 +26,8 @@ src/modules/auth/
 │   └── services/
 │       ├── PasswordHasher.ts             # argon2id (mem 19 MiB, time 2, par 1)
 │       ├── TokenService.ts               # JWT access + refresh issuance
-│       └── OtpService.ts                 # generate / verify / resendAllowedAt
+│       ├── OtpService.ts                 # generate / verify / resendAllowedAt
+│       └── OtpNotifier.ts                # interface — deliver OTP code to user (email/SMS/…)
 ├── application/
 │   ├── services/
 │   │   └── OtpVerifier.ts                # OtpVerifier interface + OtpVerifyInput — consumed cross-module
@@ -38,9 +39,12 @@ src/modules/auth/
 │       ├── SendOtp.ts                    # + SendOtp.test.ts
 │       └── VerifyOtp.ts                  # implements OtpVerifier; + VerifyOtp.test.ts
 ├── infrastructure/
-│   └── repositories/
-│       ├── DrizzleRefreshTokenRepository.ts
-│       └── DrizzleOtpTokenRepository.ts
+│   ├── repositories/
+│   │   ├── DrizzleRefreshTokenRepository.ts
+│   │   └── DrizzleOtpTokenRepository.ts
+│   └── notifiers/
+│       ├── ResendOtpNotifier.ts          # sends OTP via Resend API (EMAIL_PROVIDER=resend)
+│       └── ConsoleOtpNotifier.ts         # logs OTP to stdout (EMAIL_PROVIDER=console, dev default)
 └── interfaces/
     └── http/
         ├── AuthController.ts             # register / login / refresh / logout
@@ -87,6 +91,7 @@ dependency at the application-service boundary.
 | `OtpPurpose` | `domain/entities/OtpToken.ts` | `'email_verification' \| 'login' \| 'password_reset'` |
 | `OtpTokenRepository` | `domain/repositories/OtpTokenRepository.ts` | `create`, `findLatestActive`, `findActiveByHash`, `markUsed`, `revokeAllForUser` |
 | `OtpService` | `domain/services/OtpService.ts` | `generate()`, `verify()`, `resendAllowedAt()`, static `hash()` |
+| `OtpNotifier` | `domain/services/OtpNotifier.ts` | `send(OtpNotifyPayload): Promise<void>` — delivery abstraction |
 
 ### Application service interface
 
@@ -129,9 +134,10 @@ Behaviour:
    resend-allowed timestamp in the message.
 3. Otherwise revokes any outstanding OTPs for `(userId, purpose)`
    (`revokeAllForUser`), then generates and persists a new OTP.
-4. Returns the plaintext code (caller is responsible for delivering it via
-   email / SMS — this module deliberately does not own delivery), the
-   expiry, and the next allowed resend time.
+4. Calls `OtpNotifier.send()` with the user's email, plaintext code, purpose,
+   and expiry. The notifier implementation is injected at construction time
+   (see `buildAuthModule`); the use case does not know the delivery channel.
+5. Returns the expiry and next allowed resend time.
 
 `VerifyOtp` — `application/use-cases/VerifyOtp.ts`
 
@@ -171,13 +177,20 @@ Active-OTP semantics in the repository: `usedAt IS NULL AND expiresAt > now()`.
 
 ### HTTP exposure
 
-There are **no HTTP routes for OTP** at this time — `SendOtp` and `VerifyOtp`
-are exposed only as in-process application services on `AuthModule`. The
-existing `auth/interfaces/http` (`routes.ts`, `AuthController.ts`,
-`openapi.ts`) cover register / login / refresh / logout only.
+All routes are mounted under `/api/v1/auth` and wired in `routes.ts`.
 
-TODO: when an HTTP surface is added, register it under `/api/v1/auth/otp/*`
-with the `authRateLimiter` and follow `.claude/rules/api-design.md`.
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| `POST` | `/register` | — | Register + auto-login |
+| `POST` | `/login` | — | Validates credentials, issues OTP, returns `{ requiresOtp, userId, resendAllowedAt }` |
+| `POST` | `/refresh` | — | Rotates refresh token |
+| `POST` | `/logout` | — | Revokes refresh-token family |
+| `POST` | `/otp/send` | `requireAuth` | Re-send OTP for authenticated user; `userId` from `req.auth` |
+| `POST` | `/otp/verify` | — | Verify OTP code |
+| `POST` | `/otp/complete-login` | — | Exchange valid OTP for session tokens after `POST /login` |
+
+All auth routes pass through `authRateLimiter`. The OTP endpoints additionally
+require `authRateLimiter` as a second guard.
 
 ## Cross-module dependencies
 
@@ -186,7 +199,7 @@ with the `authRateLimiter` and follow `.claude/rules/api-design.md`.
 | `@modules/user/index` | `UserRepository`, `DrizzleUserRepository` |
 | `@infra/db/client` | `db` (composition root only) |
 | `@infra/db/schema` | `otpTokens`, `refreshTokens` (infrastructure layer only) |
-| `@shared/env` | `ENV.JWT_*` |
+| `@shared/env` | `ENV.JWT_*`, `ENV.EMAIL_PROVIDER`, `ENV.EMAIL_FROM`, `ENV.RESEND_API_KEY` |
 | `@shared/errors` | `NotFoundError`, `UnauthenticatedError`, `PreconditionFailedError` |
 | `@shared/id` | `newId()` |
 

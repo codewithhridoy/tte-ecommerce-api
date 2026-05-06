@@ -1,6 +1,6 @@
 # Contributing
 
-**Last updated:** 2026-05-06
+**Last updated:** 2026-05-07
 
 This document covers the developer workflow for `tte-ecommerce-api`. For
 architectural rules, read the project root `CLAUDE.md` and
@@ -47,6 +47,9 @@ operational.
    | `EVENT_BUS_DRIVER` | `outbox` (current) or `rabbitmq` |
    | `RABBITMQ_URL` | AMQP URL when `EVENT_BUS_DRIVER=rabbitmq` |
    | `PAYMENT_PROVIDER` | `mock` (current default) |
+   | `EMAIL_PROVIDER` | `console` (dev — logs OTP to stdout) or `resend` (production) |
+   | `EMAIL_FROM` | From address for OTP emails (e.g. `noreply@yourdomain.com`) |
+   | `RESEND_API_KEY` | Required when `EMAIL_PROVIDER=resend`. Get from resend.com |
 
    Generate JWT secrets with `openssl rand -hex 32`.
 

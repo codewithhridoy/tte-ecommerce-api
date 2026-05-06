@@ -5,6 +5,7 @@ import type { UserRepository } from '@modules/user/index.js'
 import type { OtpTokenRepository } from '../../domain/repositories/OtpTokenRepository.js'
 import type { OtpPurpose } from '../../domain/entities/OtpToken.js'
 import type { OtpService } from '../../domain/services/OtpService.js'
+import type { OtpNotifier } from '../../domain/services/OtpNotifier.js'
 
 export const SendOtpInput = z.object({
   userId: z.string().uuid(),
@@ -25,6 +26,7 @@ export class SendOtp {
     private readonly users: UserRepository,
     private readonly otpTokens: OtpTokenRepository,
     private readonly otpService: OtpService,
+    private readonly notifier: OtpNotifier,
   ) {}
 
   async execute(input: SendOtpInput): Promise<SendOtpOutput> {
@@ -53,6 +55,13 @@ export class SendOtp {
       id: newId(),
       userId: input.userId,
       codeHash: hash,
+      purpose: input.purpose as OtpPurpose,
+      expiresAt,
+    })
+
+    await this.notifier.send({
+      email: user.email,
+      code,
       purpose: input.purpose as OtpPurpose,
       expiresAt,
     })

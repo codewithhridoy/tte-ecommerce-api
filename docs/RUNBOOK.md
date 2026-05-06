@@ -1,6 +1,6 @@
 # Runbook
 
-**Last updated:** 2026-05-06
+**Last updated:** 2026-05-07
 
 Operational procedures for deploying, migrating, and recovering
 `tte-ecommerce-api`. For developer workflow see `docs/CONTRIB.md`.
@@ -158,6 +158,20 @@ accumulate:
 
 TODO: document the exact metric / alert for "outbox lag" once one is in
 place.
+
+### OTP emails not being delivered
+
+1. Confirm `EMAIL_PROVIDER` is set to `resend` in the production environment
+   (default is `console`, which only logs to stdout).
+2. Confirm `RESEND_API_KEY` is set and is a valid Resend API key
+   (starts with `re_`). The app throws at startup if `RESEND_API_KEY` is
+   absent when `EMAIL_PROVIDER=resend`.
+3. Confirm `EMAIL_FROM` is a verified sender address in your Resend account.
+   Resend rejects mail from unverified domains.
+4. Check application logs for `Failed to send OTP email via Resend: ...` —
+   the `ResendOtpNotifier` propagates the Resend error message.
+5. In development, set `EMAIL_PROVIDER=console`; the OTP code is logged at
+   `info` level with the fields `email`, `purpose`, and `expiresAt`.
 
 ### Rate-limit storm
 

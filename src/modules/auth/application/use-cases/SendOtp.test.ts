@@ -7,6 +7,7 @@ import type { OtpTokenRepository, CreateOtpTokenDto } from '../../domain/reposit
 import type { User } from '@modules/user/index.js'
 import type { UserRepository, CreateUserDto } from '@modules/user/index.js'
 import type { UserWithSecret } from '@modules/user/index.js'
+import type { OtpNotifier, OtpNotifyPayload } from '../../domain/services/OtpNotifier.js'
 
 // ---------------------------------------------------------------------------
 // Fakes
@@ -105,6 +106,13 @@ class FakeOtpTokenRepo implements OtpTokenRepository {
   }
 }
 
+class FakeOtpNotifier implements OtpNotifier {
+  readonly sent: OtpNotifyPayload[] = []
+  async send(payload: OtpNotifyPayload): Promise<void> {
+    this.sent.push(payload)
+  }
+}
+
 // ---------------------------------------------------------------------------
 // OtpService instance shared across tests
 // ---------------------------------------------------------------------------
@@ -132,7 +140,7 @@ describe('SendOtp', () => {
   it('generates a 6-digit code and returns expiresAt + resendAllowedAt', async () => {
     const users = new FakeUserRepo([makeUser()])
     const otpTokens = new FakeOtpTokenRepo()
-    const uc = new SendOtp(users, otpTokens, otpService)
+    const uc = new SendOtp(users, otpTokens, otpService, new FakeOtpNotifier())
 
     const result = await uc.execute({ userId: 'user-1', purpose: 'email_verification' })
 
@@ -142,7 +150,7 @@ describe('SendOtp', () => {
   })
 
   it('throws NotFoundError for unknown user', async () => {
-    const uc = new SendOtp(new FakeUserRepo([]), new FakeOtpTokenRepo(), otpService)
+    const uc = new SendOtp(new FakeUserRepo([]), new FakeOtpTokenRepo(), otpService, new FakeOtpNotifier())
     await expect(
       uc.execute({ userId: 'user-1', purpose: 'login' }),
     ).rejects.toBeInstanceOf(NotFoundError)
@@ -153,6 +161,7 @@ describe('SendOtp', () => {
       new FakeUserRepo([makeUser({ isActive: false })]),
       new FakeOtpTokenRepo(),
       otpService,
+      new FakeOtpNotifier(),
     )
     await expect(
       uc.execute({ userId: 'user-1', purpose: 'login' }),
@@ -166,7 +175,7 @@ describe('SendOtp', () => {
     otpTokens.setLatestActive(
       makeOtpToken({ createdAt: new Date('2024-06-01T11:59:30Z') }),
     )
-    const uc = new SendOtp(users, otpTokens, otpService)
+    const uc = new SendOtp(users, otpTokens, otpService, new FakeOtpNotifier())
 
     await expect(
       uc.execute({ userId: 'user-1', purpose: 'email_verification' }),
@@ -180,7 +189,7 @@ describe('SendOtp', () => {
     otpTokens.setLatestActive(
       makeOtpToken({ createdAt: new Date('2024-06-01T11:58:30Z') }),
     )
-    const uc = new SendOtp(users, otpTokens, otpService)
+    const uc = new SendOtp(users, otpTokens, otpService, new FakeOtpNotifier())
 
     const result = await uc.execute({ userId: 'user-1', purpose: 'email_verification' })
     expect(result.code).toMatch(/^\d{6}$/)
@@ -189,7 +198,7 @@ describe('SendOtp', () => {
   it('works for all supported purposes', async () => {
     const purposes = ['email_verification', 'login', 'password_reset'] as const
     for (const purpose of purposes) {
-      const uc = new SendOtp(new FakeUserRepo([makeUser()]), new FakeOtpTokenRepo(), otpService)
+      const uc = new SendOtp(new FakeUserRepo([makeUser()]), new FakeOtpTokenRepo(), otpService, new FakeOtpNotifier())
       const result = await uc.execute({ userId: 'user-1', purpose })
       expect(result.code).toMatch(/^\d{6}$/)
     }

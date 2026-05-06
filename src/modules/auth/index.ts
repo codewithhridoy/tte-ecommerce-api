@@ -5,8 +5,11 @@ import { DrizzleUserRepository } from "@modules/user/index";
 import { argon2Hasher } from "./domain/services/PasswordHasher";
 import { TokenService } from "./domain/services/TokenService";
 import { OtpService } from "./domain/services/OtpService";
+import type { OtpNotifier } from "./domain/services/OtpNotifier";
 import { DrizzleRefreshTokenRepository } from "./infrastructure/repositories/DrizzleRefreshTokenRepository";
 import { DrizzleOtpTokenRepository } from "./infrastructure/repositories/DrizzleOtpTokenRepository";
+import { ResendOtpNotifier } from "./infrastructure/notifiers/ResendOtpNotifier";
+import { ConsoleOtpNotifier } from "./infrastructure/notifiers/ConsoleOtpNotifier";
 import { RegisterUser } from "./application/use-cases/RegisterUser";
 import { LoginUser } from "./application/use-cases/LoginUser";
 import { RefreshSession } from "./application/use-cases/RefreshSession";
@@ -17,6 +20,16 @@ import { ValidateCredentials } from "./application/use-cases/ValidateCredentials
 import { CompleteLoginWithOtp } from "./application/use-cases/CompleteLoginWithOtp";
 import { AuthController } from "./interfaces/http/AuthController";
 import { authRoutes } from "./interfaces/http/routes";
+
+function buildOtpNotifier(): OtpNotifier {
+  if (ENV.EMAIL_PROVIDER === "resend") {
+    if (!ENV.RESEND_API_KEY) {
+      throw new Error("RESEND_API_KEY is required when EMAIL_PROVIDER=resend");
+    }
+    return new ResendOtpNotifier(ENV.RESEND_API_KEY, ENV.EMAIL_FROM);
+  }
+  return new ConsoleOtpNotifier();
+}
 
 export interface AuthModule {
   routes: Router;
@@ -43,7 +56,7 @@ export const buildAuthModule = (): AuthModule => {
   const refreshRepo = new DrizzleRefreshTokenRepository(db);
   const otpRepo = new DrizzleOtpTokenRepository(db);
 
-  const sendOtp = new SendOtp(userRepo, otpRepo, otpService);
+  const sendOtp = new SendOtp(userRepo, otpRepo, otpService, buildOtpNotifier());
   const verifyOtp = new VerifyOtp(userRepo, otpRepo);
   const validateCredentials = new ValidateCredentials(userRepo, argon2Hasher);
   const completeLoginWithOtp = new CompleteLoginWithOtp(userRepo, refreshRepo, otpRepo, tokenService);
