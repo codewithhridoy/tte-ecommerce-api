@@ -4,8 +4,15 @@ import cors from "cors";
 import express, { type Express, type RequestHandler } from "express";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
+import { apiReference } from "@scalar/express-api-reference";
 import { logger } from "@shared/logger";
 import { ok } from "@shared/http/response";
+import { buildOpenApiSpec } from "@shared/http/openapi/spec";
+// Side-effect imports: register each module's OpenAPI paths into the shared registry.
+import "@modules/auth/interfaces/http/openapi";
+import "@modules/product/interfaces/http/openapi";
+import "@modules/cart/interfaces/http/openapi";
+import "@modules/order/interfaces/http/openapi";
 import {
   errorHandler,
   notFoundHandler,
@@ -56,6 +63,19 @@ export const buildApp = (): BuildAppResult => {
 
   app.get("/health", (_req, res) => res.json(ok({ status: "ok" })));
   app.get("/ready", (_req, res) => res.json(ok({ status: "ready" })));
+
+  // API documentation — served outside /api/v1 so it's not rate-limited.
+  const openApiSpec = buildOpenApiSpec();
+  app.get("/api/openapi.json", (_req, res) => res.json(openApiSpec));
+  app.use(
+    "/api/docs",
+    apiReference({
+      pageTitle: "TTE Ecommerce API Docs",
+      content: openApiSpec,
+      theme: "purple",
+      url: "/openapi.json",
+    }),
+  );
 
   // Compose modules.
   const auth = buildAuthModule();

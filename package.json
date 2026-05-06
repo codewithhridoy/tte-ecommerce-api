@@ -21,7 +21,9 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^7.3.4",
     "@fastify/deepmerge": "^2.0.0",
+    "@scalar/express-api-reference": "^0.9.14",
     "argon2": "^0.41.1",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.7",
