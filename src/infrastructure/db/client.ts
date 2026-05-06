@@ -1,13 +1,11 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
-import { loadEnv } from "@shared/env";
+import { ENV } from "@shared/env";
 import * as schema from "./schema/index";
 
-const env = loadEnv();
-
 export const pool = new pg.Pool({
-  connectionString: env.DATABASE_URL,
-  max: env.DATABASE_POOL_MAX,
+  connectionString: ENV.DATABASE_URL,
+  max: ENV.DATABASE_POOL_MAX,
   idleTimeoutMillis: 30_000,
 });
 

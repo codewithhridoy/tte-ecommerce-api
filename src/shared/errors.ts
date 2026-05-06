@@ -13,7 +13,7 @@ export class AppError extends Error {
   readonly code: ErrorCode
   readonly status: number
   readonly details?: unknown
-  readonly cause?: unknown
+  override readonly cause?: unknown
 
   constructor(code: ErrorCode, message: string, status: number, opts?: { details?: unknown; cause?: unknown }) {
     super(message)

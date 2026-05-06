@@ -42,7 +42,7 @@ export class OutboxPublisher implements EventPublisher {
           aggregateId: row.aggregateId,
           type: row.eventType,
           payload: row.payload,
-          correlationId: row.correlationId ?? undefined,
+          ...(row.correlationId !== null ? { correlationId: row.correlationId } : {}),
           occurredAt: row.createdAt,
         });
         await db

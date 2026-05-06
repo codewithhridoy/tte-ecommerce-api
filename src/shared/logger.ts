@@ -1,11 +1,9 @@
 import pino from "pino";
-import { loadEnv } from "./env";
-
-const env = loadEnv();
+import { ENV } from "./env";
 
 export const logger = pino({
-  level: env.LOG_LEVEL,
-  base: { service: "tte-ecommerce-api", env: env.NODE_ENV },
+  level: ENV.LOG_LEVEL,
+  base: { service: "tte-ecommerce-api", env: ENV.NODE_ENV },
   timestamp: pino.stdTimeFunctions.isoTime,
   redact: {
     paths: [

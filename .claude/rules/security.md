@@ -2,8 +2,9 @@
 
 ## Secrets
 
-- All secrets come from env vars, parsed once via `loadEnv()` in
-  `@shared/env`. Never read `process.env` directly anywhere else.
+- All secrets come from env vars, validated once at startup. Import the
+  `ENV` constant from `@shared/env` — never call `loadEnv()` directly and
+  never read `process.env` directly anywhere else.
 - `.env` is gitignored. `.env.example` documents the shape. Never commit
   real secrets.
 - JWT secrets must be at least 32 random bytes in production. The schema

@@ -1,7 +1,7 @@
 import type { Router } from "express";
 import { db } from "@infra/db/client";
-import { loadEnv } from "@shared/env";
-import { DrizzleUserRepository } from "@modules/user/infrastructure/repositories/DrizzleUserRepository";
+import { ENV } from "@shared/env";
+import { DrizzleUserRepository } from "@modules/user/index";
 import { argon2Hasher } from "./domain/services/PasswordHasher";
 import { TokenService } from "./domain/services/TokenService";
 import { DrizzleRefreshTokenRepository } from "./infrastructure/repositories/DrizzleRefreshTokenRepository";
@@ -18,12 +18,11 @@ export interface AuthModule {
 }
 
 export const buildAuthModule = (): AuthModule => {
-  const env = loadEnv();
   const tokenService = new TokenService({
-    accessSecret: env.JWT_ACCESS_SECRET,
-    refreshSecret: env.JWT_REFRESH_SECRET,
-    accessTtlSeconds: env.JWT_ACCESS_TTL,
-    refreshTtlSeconds: env.JWT_REFRESH_TTL,
+    accessSecret: ENV.JWT_ACCESS_SECRET,
+    refreshSecret: ENV.JWT_REFRESH_SECRET,
+    accessTtlSeconds: ENV.JWT_ACCESS_TTL,
+    refreshTtlSeconds: ENV.JWT_REFRESH_TTL,
   });
 
   const userRepo = new DrizzleUserRepository(db);

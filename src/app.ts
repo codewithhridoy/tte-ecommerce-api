@@ -5,7 +5,6 @@ import express, { type Express, type RequestHandler } from "express";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
 import { logger } from "@shared/logger";
-import { loadEnv } from "@shared/env";
 import { ok } from "@shared/http/response";
 import {
   errorHandler,
@@ -33,7 +32,6 @@ export interface BuildAppResult {
 }
 
 export const buildApp = (): BuildAppResult => {
-  const env = loadEnv();
   const app = express();
 
   app.disable("x-powered-by");
@@ -107,7 +105,6 @@ export const buildApp = (): BuildAppResult => {
   const shutdown = async (): Promise<void> => {
     logger.info("shutting down app");
     await new Promise<void>((resolve) => setImmediate(resolve));
-    void env;
   };
 
   return { app, outboxPublisher, shutdown };

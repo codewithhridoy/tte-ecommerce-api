@@ -1,5 +1,5 @@
 import { db } from "@infra/db/client";
-import { loadEnv } from "@shared/env";
+import { ENV } from "@shared/env";
 import type { OrderRepository } from "@modules/order/domain/repositories/OrderRepository";
 import { DrizzlePaymentRepository } from "./infrastructure/repositories/DrizzlePaymentRepository";
 import {
@@ -18,10 +18,9 @@ export interface PaymentModule {
 }
 
 export const buildPaymentModule = (deps: PaymentModuleDeps): PaymentModule => {
-  const env = loadEnv();
-  if (env.PAYMENT_PROVIDER !== "mock") {
+  if (ENV.PAYMENT_PROVIDER !== "mock") {
     throw new Error(
-      `Payment provider '${env.PAYMENT_PROVIDER}' is not wired up yet`,
+      `Payment provider '${ENV.PAYMENT_PROVIDER}' is not wired up yet`,
     );
   }
   const gateway: PaymentGateway = new MockPaymentGateway();

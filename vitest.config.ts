@@ -4,6 +4,7 @@ import path from 'node:path'
 export default defineConfig({
   test: {
     environment: 'node',
+    setupFiles: ['./tests/setup.ts'],
     include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
     coverage: {
       provider: 'v8',
@@ -14,6 +15,7 @@ export default defineConfig({
         'src/server.ts',
         'src/infrastructure/db/migrations/**',
         'src/**/schema/**',
+        'tests/setup.ts',
       ],
     },
   },

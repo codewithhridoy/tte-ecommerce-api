@@ -1,15 +1,14 @@
-import { loadEnv } from "@shared/env";
+import { ENV } from "@shared/env";
 import { logger } from "@shared/logger";
 import { pool } from "@infra/db/client";
 import { redis } from "@infra/cache/redis";
 import { startOutboxRelay } from "@infra/events/outbox-relay";
 import { buildApp } from "./app";
 
-const env = loadEnv();
 const { app, outboxPublisher, shutdown } = buildApp();
 
-const server = app.listen(env.PORT, () => {
-  logger.info({ port: env.PORT, env: env.NODE_ENV }, "server listening");
+const server = app.listen(ENV.PORT, () => {
+  logger.info({ port: ENV.PORT, env: ENV.NODE_ENV }, "server listening");
 });
 
 const relay = startOutboxRelay(outboxPublisher);

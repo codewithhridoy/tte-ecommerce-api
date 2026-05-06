@@ -1,9 +1,7 @@
 import IORedis from "ioredis";
-import { loadEnv } from "@shared/env";
+import { ENV } from "@shared/env";
 
-const env = loadEnv();
-
-export const redis = new IORedis(env.REDIS_URL, {
+export const redis = new IORedis(ENV.REDIS_URL, {
   maxRetriesPerRequest: 3,
   enableReadyCheck: true,
   lazyConnect: false,
