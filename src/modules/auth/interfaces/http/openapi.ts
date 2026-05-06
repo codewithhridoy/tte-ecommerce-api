@@ -143,27 +143,37 @@ registry.registerPath({
   },
 });
 
+const LoginPendingResponse = z
+  .object({
+    success: z.literal(true),
+    data: z.object({
+      requiresOtp: z.literal(true).openapi({
+        description: "Always true. A 6-digit OTP has been sent to the user's registered contact.",
+      }),
+    }),
+  })
+  .openapi("LoginPendingResponse");
+
 registry.registerPath({
   method: "post",
   path: "/auth/login",
   tags: [TAG],
-  summary: "Authenticate and open a session",
+  summary: "Validate credentials and trigger OTP",
   description:
-    "Verifies credentials and issues an access token (JWT) plus a refresh token (opaque). " +
-    "Both tokens are set as httpOnly cookies. The access token is also returned in the body " +
-    "for clients that prefer the Authorization header. " +
-    "The raw refresh token is **never** returned in the body.",
+    "Verifies email and password. On success, a 6-digit OTP is sent to the user's registered " +
+    "contact (email/SMS) with `purpose: login`. **No session is opened yet.** " +
+    "The client must complete the flow via `POST /auth/otp/complete-login`.",
   request: {
     body: { content: { "application/json": { schema: LoginBody } }, required: true },
   },
   responses: {
     200: {
-      description: "Session opened",
-      headers: setCookieHeaders,
-      content: { "application/json": { schema: SessionResponse } },
+      description: "Credentials valid — OTP dispatched",
+      content: { "application/json": { schema: LoginPendingResponse } },
     },
     400: { description: "Validation error" },
     401: { description: "Invalid credentials" },
+    412: { description: "OTP resend cooldown active" },
   },
 });
 
@@ -300,6 +310,37 @@ registry.registerPath({
     401: { description: "Authentication required" },
     404: { description: "User not found or inactive" },
     412: { description: "Resend cooldown active — try again after resendAllowedAt" },
+  },
+});
+
+const CompleteLoginBody = z
+  .object({
+    userId: z.string().uuid().openapi({ example: "01910000-0000-7000-0000-000000000001" }),
+    code: z.string().min(4).max(10).openapi({ example: "482916" }),
+  })
+  .openapi("CompleteLoginBody");
+
+registry.registerPath({
+  method: "post",
+  path: "/auth/otp/complete-login",
+  tags: [TAG],
+  summary: "Complete login by verifying the OTP",
+  description:
+    "Second step of the login flow. Verifies the `login`-purpose OTP issued by " +
+    "`POST /auth/login`, marks it used, and opens a session. " +
+    "On success, access and refresh tokens are issued and set as httpOnly cookies.",
+  request: {
+    body: { content: { "application/json": { schema: CompleteLoginBody } }, required: true },
+  },
+  responses: {
+    200: {
+      description: "OTP verified — session opened",
+      headers: setCookieHeaders,
+      content: { "application/json": { schema: SessionResponse } },
+    },
+    400: { description: "Validation error" },
+    401: { description: "Invalid or expired OTP" },
+    404: { description: "User not found or inactive" },
   },
 });
 
