@@ -1,6 +1,6 @@
 # Auth module codemap
 
-**Last updated:** 2026-05-06
+**Last updated:** 2026-05-06 (OtpVerifier interface added)
 **Bounded context:** `auth`
 **Source:** `src/modules/auth/`
 **Composition root:** `buildAuthModule()` in `src/modules/auth/index.ts`
@@ -28,13 +28,15 @@ src/modules/auth/
 │       ├── TokenService.ts               # JWT access + refresh issuance
 │       └── OtpService.ts                 # generate / verify / resendAllowedAt
 ├── application/
+│   ├── services/
+│   │   └── OtpVerifier.ts                # OtpVerifier interface + OtpVerifyInput — consumed cross-module
 │   └── use-cases/
 │       ├── RegisterUser.ts
 │       ├── LoginUser.ts
 │       ├── RefreshSession.ts
 │       ├── Logout.ts
 │       ├── SendOtp.ts                    # + SendOtp.test.ts
-│       └── VerifyOtp.ts                  # + VerifyOtp.test.ts
+│       └── VerifyOtp.ts                  # implements OtpVerifier; + VerifyOtp.test.ts
 ├── infrastructure/
 │   └── repositories/
 │       ├── DrizzleRefreshTokenRepository.ts
@@ -56,18 +58,24 @@ export interface AuthModule {
   routes: Router
   tokenService: TokenService
   sendOtp: SendOtp
-  verifyOtp: VerifyOtp
+  verifyOtp: VerifyOtp   // also satisfies OtpVerifier
 }
 
 export const buildAuthModule = (): AuthModule => { /* ... */ }
 
 export { authenticate, authorize }
 export type { AuthenticatedPrincipal }
+export type { OtpVerifier, OtpVerifyInput }   // cross-module contract
+export type { VerifyOtp }                      // concrete class type
 ```
 
 `sendOtp` and `verifyOtp` are exposed as **application-service objects** for
 other modules to consume in-process (the architecture rules forbid reaching
 into `application/use-cases/...` directly — go through this index).
+
+Other modules that only need to call `verify()` should depend on the
+`OtpVerifier` interface, not the concrete `VerifyOtp` class, to keep the
+dependency at the application-service boundary.
 
 ## OTP feature
 
@@ -79,6 +87,17 @@ into `application/use-cases/...` directly — go through this index).
 | `OtpPurpose` | `domain/entities/OtpToken.ts` | `'email_verification' \| 'login' \| 'password_reset'` |
 | `OtpTokenRepository` | `domain/repositories/OtpTokenRepository.ts` | `create`, `findLatestActive`, `findActiveByHash`, `markUsed`, `revokeAllForUser` |
 | `OtpService` | `domain/services/OtpService.ts` | `generate()`, `verify()`, `resendAllowedAt()`, static `hash()` |
+
+### Application service interface
+
+| Symbol | Path | Notes |
+|--------|------|-------|
+| `OtpVerifier` | `application/services/OtpVerifier.ts` | `verify(input: OtpVerifyInput): Promise<void>` — thin interface for cross-module DI |
+| `OtpVerifyInput` | `application/services/OtpVerifier.ts` | `{ userId: string, purpose: OtpPurpose, code: string }` |
+
+`VerifyOtp` implements `OtpVerifier`. Consumers in other modules receive
+`OtpVerifier` (via `AuthModule.verifyOtp`) so they are isolated from the
+use-case implementation details.
 
 `OtpService` config (set in `buildAuthModule`):
 
