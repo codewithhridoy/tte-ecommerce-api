@@ -1,6 +1,13 @@
+# Development stack — infrastructure + app with hot reload.
+# Usage: docker compose up
+#
+# The app source is bind-mounted so tsx watch picks up changes without
+# rebuilding the image. Override DATABASE_URL / REDIS_URL / RABBITMQ_URL
+# in .env; the values below target service names inside the compose network.
+
 services:
   postgres:
-    image: postgres:15
+    image: postgres:15-alpine
     container_name: tte-postgres
     environment:
       POSTGRES_USER: postgres
@@ -10,6 +17,11 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   redis:
@@ -19,6 +31,11 @@ services:
       - "6380:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   rabbitmq:
@@ -28,10 +45,40 @@ services:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
     ports:
-      - "5672:5672" # AMQP port
-      - "15672:15672" # Management UI
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI — http://localhost:15672
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      target: dev
+    container_name: tte-app-dev
+    env_file: .env
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/tte_ecommerce
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules  # prevent host node_modules from overwriting container's
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

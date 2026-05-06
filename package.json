@@ -2,7 +2,7 @@
   "name": "tte-ecommerce-api",
   "version": "0.1.0",
   "private": true,
-  "description": "Production-grade ecommerce API — modular monolith, Express + Drizzle + Postgres + Redis",
+  "description": "Production-grade ecommerce API — modular monolith, Express + Drizzle + Postgres + Redis + RabbitMQ",
   "type": "module",
   "engines": {
     "node": ">=20.11"
