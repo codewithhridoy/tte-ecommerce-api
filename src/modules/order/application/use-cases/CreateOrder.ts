@@ -1,21 +1,25 @@
-import { eq } from 'drizzle-orm'
-import { z } from 'zod'
-import { ConflictError, NotFoundError, PreconditionFailedError } from '@shared/errors.js'
-import { newId } from '@shared/id.js'
-import { db } from '@infra/db/client.js'
-import { carts } from '@infra/db/schema/index.js'
-import { enqueueOutbox } from '@infra/events/outbox-publisher.js'
-import type { CartRepository } from '@modules/cart/domain/repositories/CartRepository.js'
-import { subtotalMinor } from '@modules/cart/domain/entities/Cart.js'
-import type { ProductRepository } from '@modules/product/domain/repositories/ProductRepository.js'
-import type { InventoryRepository } from '@modules/inventory/domain/repositories/InventoryRepository.js'
-import type { ValidateCoupon } from '@modules/discount/index.js'
-import type { Order } from '../../domain/entities/Order.js'
-import type { OrderRepository } from '../../domain/repositories/OrderRepository.js'
+import { eq } from "drizzle-orm";
+import { z } from "zod";
+import {
+  ConflictError,
+  NotFoundError,
+  PreconditionFailedError,
+} from "@shared/errors";
+import { newId } from "@shared/id";
+import { db } from "@infra/db/client";
+import { carts } from "@infra/db/schema/index";
+import { enqueueOutbox } from "@infra/events/outbox-publisher";
+import type { CartRepository } from "@modules/cart/domain/repositories/CartRepository";
+import { subtotalMinor } from "@modules/cart/domain/entities/Cart";
+import type { ProductRepository } from "@modules/product/domain/repositories/ProductRepository";
+import type { InventoryRepository } from "@modules/inventory/domain/repositories/InventoryRepository";
+import type { ValidateCoupon } from "@modules/discount/index";
+import type { Order } from "../../domain/entities/Order";
+import type { OrderRepository } from "../../domain/repositories/OrderRepository";
 import {
   DrizzleIdempotencyRepository,
   orderIdempotencyScope,
-} from '../../infrastructure/repositories/DrizzleIdempotencyRepository.js'
+} from "../../infrastructure/repositories/DrizzleIdempotencyRepository";
 
 export const CreateOrderInput = z.object({
   cartId: z.string().uuid(),
@@ -25,15 +29,15 @@ export const CreateOrderInput = z.object({
   billingAddress: z.record(z.string()).optional(),
   taxMinor: z.number().int().nonnegative().default(0),
   shippingMinor: z.number().int().nonnegative().default(0),
-})
-export type CreateOrderInput = z.infer<typeof CreateOrderInput>
+});
+export type CreateOrderInput = z.infer<typeof CreateOrderInput>;
 
 export interface CreateOrderOutput {
-  order: Order
-  replayed: boolean
+  order: Order;
+  replayed: boolean;
 }
 
-const ORDER_CREATED_EVENT = 'order.created'
+const ORDER_CREATED_EVENT = "order.created";
 
 export class CreateOrder {
   constructor(
@@ -53,7 +57,7 @@ export class CreateOrder {
       shippingMinor: input.shippingMinor,
       shippingAddress: input.shippingAddress ?? null,
       billingAddress: input.billingAddress ?? null,
-    })
+    });
 
     return await db.transaction(async (tx) => {
       // 1. Idempotency: replay or claim a slot.
@@ -62,28 +66,36 @@ export class CreateOrder {
         scope: orderIdempotencyScope,
         userId: input.userId,
         requestHash,
-      })
-      if (lookup.hit) return { order: lookup.body, replayed: true }
+      });
+      if (lookup.hit) return { order: lookup.body, replayed: true };
 
       // 2. Load cart and validate.
-      const cart = await this.carts.findById(input.cartId)
-      if (!cart) throw new NotFoundError('Cart')
-      if (cart.status !== 'active') throw new ConflictError('Cart is not active')
-      if (cart.items.length === 0) throw new PreconditionFailedError('Cart is empty')
+      const cart = await this.carts.findById(input.cartId);
+      if (!cart) throw new NotFoundError("Cart");
+      if (cart.status !== "active")
+        throw new ConflictError("Cart is not active");
+      if (cart.items.length === 0)
+        throw new PreconditionFailedError("Cart is empty");
 
       // 3. Re-fetch variants to authoritative current price.
-      const variants = await this.products.findVariantsByIds(cart.items.map((i) => i.variantId))
-      const variantById = new Map(variants.map((v) => [v.id, v]))
+      const variants = await this.products.findVariantsByIds(
+        cart.items.map((i) => i.variantId),
+      );
+      const variantById = new Map(variants.map((v) => [v.id, v]));
       for (const item of cart.items) {
-        const v = variantById.get(item.variantId)
-        if (!v || !v.isActive) throw new PreconditionFailedError(`Variant unavailable: ${item.variantId}`)
-        if (v.currency !== cart.currency) throw new ConflictError('Currency mismatch on variant')
+        const v = variantById.get(item.variantId);
+        if (!v || !v.isActive)
+          throw new PreconditionFailedError(
+            `Variant unavailable: ${item.variantId}`,
+          );
+        if (v.currency !== cart.currency)
+          throw new ConflictError("Currency mismatch on variant");
       }
 
       // 4. Recompute money figures from variants (don't trust cart prices).
       const itemsForOrder = cart.items.map((item) => {
-        const v = variantById.get(item.variantId)!
-        const totalMinor = v.priceMinor * item.quantity
+        const v = variantById.get(item.variantId)!;
+        const totalMinor = v.priceMinor * item.quantity;
         return {
           variantId: v.id,
           sku: v.sku,
@@ -91,42 +103,48 @@ export class CreateOrder {
           quantity: item.quantity,
           unitPriceMinor: v.priceMinor,
           totalMinor,
-        }
-      })
-      const computedSubtotal = itemsForOrder.reduce((acc, i) => acc + i.totalMinor, 0)
+        };
+      });
+      const computedSubtotal = itemsForOrder.reduce(
+        (acc, i) => acc + i.totalMinor,
+        0,
+      );
       if (computedSubtotal !== subtotalMinor(cart)) {
         // Prices changed since cart was created; surface explicitly.
-        throw new ConflictError('Cart prices have changed; please refresh')
+        throw new ConflictError("Cart prices have changed; please refresh");
       }
 
       // 5. Apply coupon if present.
-      let discountMinor = 0
-      let couponCode: string | null = null
+      let discountMinor = 0;
+      let couponCode: string | null = null;
       if (cart.couponCode) {
         const result = await this.validateCoupon.execute({
           code: cart.couponCode,
           subtotalMinor: computedSubtotal,
-        })
-        discountMinor = result.discount.discountMinor
-        couponCode = result.coupon.code
+        });
+        discountMinor = result.discount.discountMinor;
+        couponCode = result.coupon.code;
       }
 
       const totalMinor = Math.max(
         0,
         computedSubtotal - discountMinor + input.taxMinor + input.shippingMinor,
-      )
+      );
 
       // 6. Lock inventory and deduct atomically.
-      const orderId = newId()
+      const orderId = newId();
       await this.inventory.lockAndDeduct(
         tx,
-        cart.items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })),
-        'order_creation',
+        cart.items.map((i) => ({
+          variantId: i.variantId,
+          quantity: i.quantity,
+        })),
+        "order_creation",
         orderId,
-      )
+      );
 
       // 7. Persist order.
-      const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}-${orderId.slice(0, 6)}`
+      const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}-${orderId.slice(0, 6)}`;
       const order = await this.orders.createInTx(tx, {
         id: orderId,
         orderNumber,
@@ -141,18 +159,18 @@ export class CreateOrder {
         shippingAddress: input.shippingAddress ?? null,
         billingAddress: input.billingAddress ?? null,
         items: itemsForOrder,
-      })
+      });
 
       // 8. Mark cart converted (same tx — atomic with order insert).
       await tx
         .update(carts)
-        .set({ status: 'converted', updatedAt: new Date() })
-        .where(eq(carts.id, cart.id))
+        .set({ status: "converted", updatedAt: new Date() })
+        .where(eq(carts.id, cart.id));
 
       // 9. Emit OrderCreated to outbox (same tx — atomic with order insert).
       await enqueueOutbox(tx, {
         id: newId(),
-        aggregateType: 'order',
+        aggregateType: "order",
         aggregateId: order.id,
         type: ORDER_CREATED_EVENT,
         payload: {
@@ -168,12 +186,12 @@ export class CreateOrder {
           })),
         },
         occurredAt: new Date(),
-      })
+      });
 
       // 10. Persist response for replay.
-      await this.idempotency.complete(tx, lookup.rowId, 201, order)
+      await this.idempotency.complete(tx, lookup.rowId, 201, order);
 
-      return { order, replayed: false }
-    })
+      return { order, replayed: false };
+    });
   }
 }

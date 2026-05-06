@@ -1,19 +1,19 @@
-import { newId } from '@shared/id.js'
-import { logger } from '@shared/logger.js'
-import type { OrderRepository } from '@modules/order/domain/repositories/OrderRepository.js'
-import type { Payment } from '../../domain/entities/Payment.js'
-import type { PaymentRepository } from '../../domain/repositories/PaymentRepository.js'
-import type { PaymentGateway } from '../../domain/services/PaymentGateway.js'
+import { newId } from "@shared/id";
+import { logger } from "@shared/logger";
+import type { OrderRepository } from "@modules/order/domain/repositories/OrderRepository";
+import type { Payment } from "../../domain/entities/Payment";
+import type { PaymentRepository } from "../../domain/repositories/PaymentRepository";
+import type { PaymentGateway } from "../../domain/services/PaymentGateway";
 
 export interface ProcessPaymentInput {
-  orderId: string
-  amountMinor: number
-  currency: string
-  idempotencyKey: string
+  orderId: string;
+  amountMinor: number;
+  currency: string;
+  idempotencyKey: string;
 }
 
 export interface ProcessPaymentOutput {
-  payment: Payment
+  payment: Payment;
 }
 
 export class ProcessPayment {
@@ -29,7 +29,7 @@ export class ProcessPayment {
       amountMinor: input.amountMinor,
       currency: input.currency,
       idempotencyKey: input.idempotencyKey,
-    })
+    });
 
     const payment = await this.payments.create({
       id: newId(),
@@ -41,16 +41,19 @@ export class ProcessPayment {
       currency: input.currency,
       rawResponse: result.raw,
       failureReason: result.failureReason ?? null,
-    })
+    });
 
-    if (result.status === 'captured') {
+    if (result.status === "captured") {
       try {
-        await this.orders.setStatus(input.orderId, 'paid')
+        await this.orders.setStatus(input.orderId, "paid");
       } catch (err) {
-        logger.error({ err, orderId: input.orderId }, 'failed to mark order paid')
+        logger.error(
+          { err, orderId: input.orderId },
+          "failed to mark order paid",
+        );
       }
     }
 
-    return { payment }
+    return { payment };
   }
 }
