@@ -11,3 +11,10 @@ registry.registerComponent("securitySchemes", "bearerAuth", {
   scheme: "bearer",
   bearerFormat: "JWT",
 });
+
+// Cookie-based auth: frontend sends access_token httpOnly cookie automatically.
+registry.registerComponent("securitySchemes", "cookieAuth", {
+  type: "apiKey",
+  in: "cookie",
+  name: "access_token",
+});

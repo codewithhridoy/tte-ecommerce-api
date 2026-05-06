@@ -60,7 +60,7 @@ registry.registerPath({
     "Inventory is decremented atomically inside the same DB transaction.",
     "Requires the `Idempotency-Key` header — replay returns 200 with `Idempotent-Replayed: true`.",
   ].join(" "),
-  security: [{ bearerAuth: [] }],
+  security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   request: {
     headers: z.object({
       "idempotency-key": z.string().min(8).max(128).openapi({

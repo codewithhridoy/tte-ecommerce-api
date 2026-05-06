@@ -11,5 +11,8 @@ export function buildOpenApiSpec() {
       description: "B2C ecommerce API — modular monolith",
     },
     servers: [{ url: "/api/v1", description: "Current version" }],
+    // Routes may use cookieAuth (browser) or bearerAuth (API / mobile) interchangeably.
+    // Individual route definitions override this where a specific scheme is required.
+    security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   });
 }
