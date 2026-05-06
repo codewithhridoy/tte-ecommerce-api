@@ -1,8 +1,8 @@
-import { and, eq, isNull, gt, lte, sql, or } from 'drizzle-orm'
-import type { DbClient } from '@infra/db/client.js'
-import { coupons } from '@infra/db/schema/index.js'
-import type { Coupon } from '../../domain/entities/Coupon.js'
-import type { CouponRepository } from '../../domain/repositories/CouponRepository.js'
+import { and, eq, isNull, gt, lte, sql, or } from "drizzle-orm";
+import type { DbClient } from "@infra/db/client";
+import { coupons } from "@infra/db/schema/index";
+import type { Coupon } from "../../domain/entities/Coupon";
+import type { CouponRepository } from "../../domain/repositories/CouponRepository";
 
 const toCoupon = (row: typeof coupons.$inferSelect): Coupon => ({
   id: row.id,
@@ -17,13 +17,13 @@ const toCoupon = (row: typeof coupons.$inferSelect): Coupon => ({
   isActive: row.isActive,
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
-})
+});
 
 export class DrizzleCouponRepository implements CouponRepository {
   constructor(private readonly db: DbClient) {}
 
   async findActiveByCode(code: string): Promise<Coupon | null> {
-    const now = new Date()
+    const now = new Date();
     const [row] = await this.db
       .select()
       .from(coupons)
@@ -35,14 +35,17 @@ export class DrizzleCouponRepository implements CouponRepository {
           or(isNull(coupons.expiresAt), gt(coupons.expiresAt, now))!,
         ),
       )
-      .limit(1)
-    return row ? toCoupon(row) : null
+      .limit(1);
+    return row ? toCoupon(row) : null;
   }
 
   async incrementRedemptions(couponId: string): Promise<void> {
     await this.db
       .update(coupons)
-      .set({ redeemedCount: sql`${coupons.redeemedCount} + 1`, updatedAt: new Date() })
-      .where(eq(coupons.id, couponId))
+      .set({
+        redeemedCount: sql`${coupons.redeemedCount} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(coupons.id, couponId));
   }
 }
