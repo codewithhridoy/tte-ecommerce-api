@@ -67,13 +67,29 @@ export const buildApp = (): BuildAppResult => {
   // API documentation — served outside /api/v1 so it's not rate-limited.
   const openApiSpec = buildOpenApiSpec();
   app.get("/api/openapi.json", (_req, res) => res.json(openApiSpec));
+  // Scalar loads its bundle from jsDelivr CDN and uses an inline bootstrap script,
+  // both of which the global helmet() CSP blocks. Override CSP for this route only.
   app.use(
     "/api/docs",
+    (_req, res, next) => {
+      res.setHeader(
+        "Content-Security-Policy",
+        [
+          "default-src 'self'",
+          "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+          "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com",
+          "font-src 'self' https://fonts.gstatic.com",
+          "img-src 'self' data: https:",
+          "worker-src blob:",
+          "connect-src 'self' https:",
+        ].join("; "),
+      );
+      next();
+    },
     apiReference({
       pageTitle: "TTE Ecommerce API Docs",
       content: openApiSpec,
       theme: "purple",
-      url: "/openapi.json",
     }),
   );
 
