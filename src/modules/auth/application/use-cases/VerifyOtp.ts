@@ -4,6 +4,7 @@ import type { UserRepository } from '@modules/user/index.js'
 import type { OtpTokenRepository } from '../../domain/repositories/OtpTokenRepository.js'
 import type { OtpPurpose } from '../../domain/entities/OtpToken.js'
 import { OtpService } from '../../domain/services/OtpService.js'
+import type { OtpVerifier, OtpVerifyInput } from '../services/OtpVerifier.js'
 
 export const VerifyOtpInput = z.object({
   userId: z.string().uuid(),
@@ -16,11 +17,16 @@ export interface VerifyOtpOutput {
   verified: true
 }
 
-export class VerifyOtp {
+export class VerifyOtp implements OtpVerifier {
   constructor(
     private readonly users: UserRepository,
     private readonly otpTokens: OtpTokenRepository,
   ) {}
+
+  /** Implements OtpVerifier — throws UnauthenticatedError on failure. */
+  async verify(input: OtpVerifyInput): Promise<void> {
+    await this.execute(input)
+  }
 
   async execute(input: VerifyOtpInput): Promise<VerifyOtpOutput> {
     const user = await this.users.findById(input.userId)

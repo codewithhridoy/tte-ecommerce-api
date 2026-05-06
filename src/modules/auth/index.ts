@@ -56,3 +56,5 @@ export const buildAuthModule = (): AuthModule => {
 export { authenticate } from "./interfaces/http/middleware/authenticate";
 export { authorize } from "./interfaces/http/middleware/authorize";
 export type { AuthenticatedPrincipal } from "./interfaces/http/middleware/authenticate";
+export type { OtpVerifier, OtpVerifyInput } from "./application/services/OtpVerifier";
+export type { VerifyOtp } from "./application/use-cases/VerifyOtp";
