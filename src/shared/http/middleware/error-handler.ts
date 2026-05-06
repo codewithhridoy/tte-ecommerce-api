@@ -3,6 +3,9 @@ import { ZodError } from "zod";
 import { AppError } from "@shared/errors";
 import { fail } from "@shared/http/response";
 import { logger } from "@shared/logger";
+import { ENV } from "@shared/env";
+
+const isDev = ENV.NODE_ENV === "development";
 
 export const errorHandler = (
   err: unknown,
@@ -25,13 +28,16 @@ export const errorHandler = (
     } else {
       logger.warn({ correlationId, code: err.code }, err.message);
     }
-    const body = fail(err.code, err.message, err.details);
-    res.status(err.status).json(body);
+    const details = isDev
+      ? { ...(err.details != null && typeof err.details === "object" ? err.details : { details: err.details }), stack: err.stack }
+      : err.details;
+    res.status(err.status).json(fail(err.code, err.message, details));
     return;
   }
 
   logger.error({ err, correlationId }, "unhandled error");
-  res.status(500).json(fail("INTERNAL", "Internal server error"));
+  const stack = isDev && err instanceof Error ? err.stack : undefined;
+  res.status(500).json(fail("INTERNAL", "Internal server error", isDev ? { stack } : undefined));
 };
 
 export const notFoundHandler = (req: Request, res: Response): void => {
