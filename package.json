@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "tsx watch --env-file=.env src/server.ts",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsup",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts",
@@ -51,6 +51,7 @@
     "@vitest/coverage-v8": "^2.1.5",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.14.0",
+    "tsup": "^8.5.1",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vitest": "^2.1.5"
