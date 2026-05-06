@@ -1,6 +1,6 @@
 import { newId } from "@shared/id";
 import { logger } from "@shared/logger";
-import type { OrderRepository } from "@modules/order/domain/repositories/OrderRepository";
+import type { OrderRepository } from "@modules/order/index";
 import type { Payment } from "../../domain/entities/Payment";
 import type { PaymentRepository } from "../../domain/repositories/PaymentRepository";
 import type { PaymentGateway } from "../../domain/services/PaymentGateway";

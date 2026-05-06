@@ -1,6 +1,6 @@
 import { db } from "@infra/db/client";
 import { ENV } from "@shared/env";
-import type { OrderRepository } from "@modules/order/domain/repositories/OrderRepository";
+import type { OrderRepository } from "@modules/order/index";
 import { DrizzlePaymentRepository } from "./infrastructure/repositories/DrizzlePaymentRepository";
 import {
   MockPaymentGateway,

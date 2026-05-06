@@ -5,9 +5,9 @@ import { DrizzleIdempotencyRepository } from "./infrastructure/repositories/Driz
 import { CreateOrder } from "./application/use-cases/CreateOrder";
 import { OrderController } from "./interfaces/http/OrderController";
 import { orderRoutes } from "./interfaces/http/routes";
-import type { CartRepository } from "@modules/cart/domain/repositories/CartRepository";
-import type { ProductRepository } from "@modules/product/domain/repositories/ProductRepository";
-import type { InventoryRepository } from "@modules/inventory/domain/repositories/InventoryRepository";
+import type { CartRepository } from "@modules/cart/index";
+import type { ProductRepository } from "@modules/product/index";
+import type { InventoryRepository } from "@modules/inventory/index";
 import type { ValidateCoupon } from "@modules/discount/index";
 
 export interface OrderModuleDeps {
@@ -40,3 +40,4 @@ export const buildOrderModule = (deps: OrderModuleDeps): OrderModule => {
 
 export type { Order, OrderItem } from "./domain/entities/Order";
 export type { OrderStatus } from "./domain/value-objects/OrderStatus";
+export type { OrderRepository } from "./domain/repositories/OrderRepository";
