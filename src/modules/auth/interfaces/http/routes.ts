@@ -18,9 +18,10 @@ export const authRoutes = (
   r.post("/logout", asyncHandler(controller.logoutSession));
 
   // OTP — send requires a session (userId comes from req.auth).
-  // Verify is public: user may not have a session yet (e.g. password reset).
+  // Verify and complete-login are public: user may not have a session yet.
   r.post("/otp/send", authRateLimiter, requireAuth, asyncHandler(controller.sendOtp));
   r.post("/otp/verify", authRateLimiter, asyncHandler(controller.verifyOtp));
+  r.post("/otp/complete-login", authRateLimiter, asyncHandler(controller.completeLoginWithOtp));
 
   return r;
 };

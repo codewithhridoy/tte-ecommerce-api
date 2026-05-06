@@ -2,9 +2,14 @@ import type { Request, Response } from "express";
 import { UnauthenticatedError } from "@shared/errors";
 import { ok } from "@shared/http/response";
 import {
-  LoginUserInput,
-  type LoginUser,
-} from "../../application/use-cases/LoginUser";
+  ValidateCredentialsInput,
+  type ValidateCredentials,
+} from "../../application/use-cases/ValidateCredentials";
+import {
+  CompleteLoginWithOtpInput,
+  type CompleteLoginWithOtp,
+} from "../../application/use-cases/CompleteLoginWithOtp";
+import type { LoginUser } from "../../application/use-cases/LoginUser";
 import {
   RegisterUserInput,
   type RegisterUser,
@@ -33,6 +38,8 @@ export class AuthController {
     private readonly logout: Logout,
     private readonly sendOtpUseCase: SendOtp,
     private readonly verifyOtpUseCase: VerifyOtp,
+    private readonly validateCredentials: ValidateCredentials,
+    private readonly completeLoginWithOtpUseCase: CompleteLoginWithOtp,
   ) {}
 
   register = async (req: Request, res: Response): Promise<void> => {
@@ -53,8 +60,15 @@ export class AuthController {
   };
 
   login = async (req: Request, res: Response): Promise<void> => {
-    const input = LoginUserInput.parse(req.body);
-    const tokens = await this.loginUser.execute(input);
+    const input = ValidateCredentialsInput.parse(req.body);
+    const { userId } = await this.validateCredentials.execute(input);
+    await this.sendOtpUseCase.execute({ userId, purpose: "login" });
+    res.status(200).json(ok({ requiresOtp: true }));
+  };
+
+  completeLoginWithOtp = async (req: Request, res: Response): Promise<void> => {
+    const input = CompleteLoginWithOtpInput.parse(req.body);
+    const tokens = await this.completeLoginWithOtpUseCase.execute(input);
     setAuthCookies(res, tokens);
     res.status(200).json(
       ok({

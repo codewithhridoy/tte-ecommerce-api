@@ -13,6 +13,8 @@ import { RefreshSession } from "./application/use-cases/RefreshSession";
 import { Logout } from "./application/use-cases/Logout";
 import { SendOtp } from "./application/use-cases/SendOtp";
 import { VerifyOtp } from "./application/use-cases/VerifyOtp";
+import { ValidateCredentials } from "./application/use-cases/ValidateCredentials";
+import { CompleteLoginWithOtp } from "./application/use-cases/CompleteLoginWithOtp";
 import { AuthController } from "./interfaces/http/AuthController";
 import { authRoutes } from "./interfaces/http/routes";
 
@@ -43,6 +45,8 @@ export const buildAuthModule = (): AuthModule => {
 
   const sendOtp = new SendOtp(userRepo, otpRepo, otpService);
   const verifyOtp = new VerifyOtp(userRepo, otpRepo);
+  const validateCredentials = new ValidateCredentials(userRepo, argon2Hasher);
+  const completeLoginWithOtp = new CompleteLoginWithOtp(userRepo, refreshRepo, otpRepo, tokenService);
 
   const controller = new AuthController(
     new RegisterUser(userRepo, argon2Hasher),
@@ -51,6 +55,8 @@ export const buildAuthModule = (): AuthModule => {
     new Logout(refreshRepo),
     sendOtp,
     verifyOtp,
+    validateCredentials,
+    completeLoginWithOtp,
   );
   return { routes: authRoutes(controller, tokenService), tokenService, sendOtp, verifyOtp };
 };
