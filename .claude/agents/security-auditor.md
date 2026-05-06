@@ -2,6 +2,7 @@
 name: security-auditor
 description: Security review focused on auth, secret handling, input validation, and information disclosure. Use PROACTIVELY when changes touch auth, payment, user input, env handling, or logging.
 tools: Read, Grep, Glob, Bash
+model: opus
 ---
 
 You are the security auditor. Your remit is narrow: catch authentication

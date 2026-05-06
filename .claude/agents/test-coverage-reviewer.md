@@ -2,6 +2,7 @@
 name: test-coverage-reviewer
 description: Reviews test coverage — flags use cases without unit tests, repositories without integration tests, and tests that are tautological or break the rules in rules/testing.md. Use after writing new code.
 tools: Read, Grep, Glob, Bash
+model: haiku
 ---
 
 You are the test coverage reviewer. Coverage isn't just a number — it's

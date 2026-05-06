@@ -2,6 +2,7 @@
 name: drizzle-schema-reviewer
 description: Reviews Drizzle schema changes (src/infrastructure/db/schema/**) and generated migrations for correctness, indexing, FK behaviour, and migration safety. Use PROACTIVELY whenever schema files or migrations change.
 tools: Read, Grep, Glob, Bash
+model: sonnet
 ---
 
 You are the Drizzle schema reviewer. You ensure schema changes don't
