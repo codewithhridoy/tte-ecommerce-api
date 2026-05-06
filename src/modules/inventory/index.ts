@@ -1,14 +1,17 @@
-import { db } from '@infra/db/client.js'
-import { DrizzleInventoryRepository } from './infrastructure/repositories/DrizzleInventoryRepository.js'
-import type { InventoryRepository } from './domain/repositories/InventoryRepository.js'
+import { db } from "@infra/db/client";
+import { DrizzleInventoryRepository } from "./infrastructure/repositories/DrizzleInventoryRepository";
+import type { InventoryRepository } from "./domain/repositories/InventoryRepository";
 
 export interface InventoryModule {
-  inventoryRepository: InventoryRepository
+  inventoryRepository: InventoryRepository;
 }
 
 export const buildInventoryModule = (): InventoryModule => ({
   inventoryRepository: new DrizzleInventoryRepository(db),
-})
+});
 
-export type { InventoryRepository, ReservationLine } from './domain/repositories/InventoryRepository.js'
-export type { InventoryRecord } from './domain/entities/Inventory.js'
+export type {
+  InventoryRepository,
+  ReservationLine,
+} from "./domain/repositories/InventoryRepository";
+export type { InventoryRecord } from "./domain/entities/Inventory";
