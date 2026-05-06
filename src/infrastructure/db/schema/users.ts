@@ -11,6 +11,12 @@ import {
 } from "drizzle-orm/pg-core";
 import { id, timestamps } from "./_helpers";
 
+export const otpPurposeEnum = pgEnum("otp_purpose", [
+  "email_verification",
+  "login",
+  "password_reset",
+]);
+
 export const userRoleEnum = pgEnum("user_role", ["customer", "staff", "admin"]);
 
 export const users = pgTable(
@@ -50,5 +56,30 @@ export const refreshTokens = pgTable(
     tokenHashUnique: uniqueIndex("refresh_tokens_hash_unique").on(t.tokenHash),
     userIdx: index("refresh_tokens_user_idx").on(t.userId),
     familyIdx: index("refresh_tokens_family_idx").on(t.familyId),
+  }),
+);
+
+export const otpTokens = pgTable(
+  "otp_tokens",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    codeHash: text("code_hash").notNull(),
+    purpose: otpPurposeEnum("purpose").notNull(),
+    expiresAt: timestamp("expires_at", {
+      withTimezone: true,
+      mode: "date",
+    }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true, mode: "date" }),
+    ...timestamps,
+  },
+  (t) => ({
+    userPurposeIdx: index("otp_tokens_user_purpose_idx").on(
+      t.userId,
+      t.purpose,
+    ),
+    codeHashUnique: uniqueIndex("otp_tokens_code_hash_unique").on(t.codeHash),
   }),
 );
