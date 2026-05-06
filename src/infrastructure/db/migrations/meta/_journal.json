@@ -8,6 +8,13 @@
       "when": 1777998525126,
       "tag": "0000_massive_satana",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1778096428696,
+      "tag": "0001_great_pyro",
+      "breakpoints": true
     }
   ]
 }
