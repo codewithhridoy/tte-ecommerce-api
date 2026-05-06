@@ -62,8 +62,8 @@ export class AuthController {
   login = async (req: Request, res: Response): Promise<void> => {
     const input = ValidateCredentialsInput.parse(req.body);
     const { userId } = await this.validateCredentials.execute(input);
-    await this.sendOtpUseCase.execute({ userId, purpose: "login" });
-    res.status(200).json(ok({ requiresOtp: true }));
+    const { resendAllowedAt } = await this.sendOtpUseCase.execute({ userId, purpose: "login" });
+    res.status(200).json(ok({ requiresOtp: true, userId, resendAllowedAt: resendAllowedAt.toISOString() }));
   };
 
   completeLoginWithOtp = async (req: Request, res: Response): Promise<void> => {

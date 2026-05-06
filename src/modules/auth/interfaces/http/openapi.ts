@@ -150,6 +150,14 @@ const LoginPendingResponse = z
       requiresOtp: z.literal(true).openapi({
         description: "Always true. A 6-digit OTP has been sent to the user's registered contact.",
       }),
+      userId: z.string().uuid().openapi({
+        description: "The user ID required to complete the login via POST /auth/otp/complete-login.",
+        example: "01910000-0000-7000-0000-000000000001",
+      }),
+      resendAllowedAt: z.string().datetime().openapi({
+        description: "Earliest time the OTP may be resent (60-second cooldown).",
+        example: "2026-05-07T12:01:00.000Z",
+      }),
     }),
   })
   .openapi("LoginPendingResponse");
